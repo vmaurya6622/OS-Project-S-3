@@ -27,9 +27,9 @@ void loader_cleanup()
 /*
  * Load and run the ELF executable file
  */
-void load_and_run_elf(char **exe)
+void load_and_run_elf(char **argv)
 {
-	fd = open(argv[1], O_RDONLY);// O_RDONLY :- means Read-ONLY mode.
+	fd = open(argv[1],O_RDONLY);// O_RDONLY :- means Read-ONLY mode.
 	if(fd==-1){   // File opening error Checking
 		printf("Error Generated while Opening the File.\n");
 		exit(1);
@@ -37,32 +37,32 @@ void load_and_run_elf(char **exe)
 
 	// ** 1. Load entire binary content into the memory from the ELF file.
 	off_t f_size=lseek(fd,0,SEEK_END);
-    lseek(fd, 0, SEEK_SET);
+    lseek(fd,0,SEEK_SET);
 
 	// fd :- file descriptor.
 	// lseek is used to seek the position indication to a specific position in the given file.
 	// i have set the offset to '0' in the lseek to avoid changing.
 	// Now the location pointer is set now we will read the contents:
-    void *bin_data = mmap(NULL, f_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if(bin_data == MAP_FAILED){
+    void *bin_data = mmap(NULL,f_size,PROT_READ,MAP_PRIVATE,fd,0);
+	if(bin_data==MAP_FAILED){
 		printf("Error while mapping.\n");
 		close(fd);
 		exit(1);
 	}
 	// 2. Iterate through the PHDR table and find the section of PT_LOAD
 	//    type that contains the address of the entrypoint method in fib.c
-	Elf64_Ehdr *elf_header = (Elf64_Ehdr*)bin_data;
-    Elf64_Phdr *program_header = (Elf64_Phdr*)(bin_data+elf_header->e_phoff);
-    void *entry_point = NULL;
+	Elf64_Ehdr *elf_header =(Elf64_Ehdr*)bin_data;
+    Elf64_Phdr *program_header=(Elf64_Phdr*)(bin_data+elf_header->e_phoff);
+    void *entry_point=NULL;
 
     for(int i=0;i<elf_header->e_phnum;i++)    {
         if(program_header[i].p_type==PT_LOAD){
-            entry_point = bin_data + program_header[i].p_offset;
+            entry_point=bin_data+program_header[i].p_offset;
 			// adding the bin_data address to the entry point address.
             break;
         }
     }
-	if(entry_point == NULL){
+	if(entry_point==NULL){
         printf("Error: PT_LOAD segment not found!\n");
         close(fd);
         munmap(bin_data, f_size);
@@ -71,7 +71,7 @@ void load_and_run_elf(char **exe)
     }
 	// 3. Allocate memory of the size "p_memsz" using mmap function
 	//    and then copy the segment content
-	void *segment_addr=mmap(NULL, program_header->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC,MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	void *segment_addr=mmap(NULL, program_header->p_memsz, PROT_READ | PROT_WRITE | PROT_EXEC,MAP_ANONYMOUS | MAP_PRIVATE, 0, 0);
 	if(segment_addr==MAP_FAILED){
         printf("Error Memory cannot be allocated!\n");
         close(fd);
@@ -86,8 +86,9 @@ void load_and_run_elf(char **exe)
     int (*_start)() = segment_addr;
 	int result = _start();
 	printf("User _start return value = %d\n", result);
-	munmap(segment_addr, program_header->p_memsz);
-    munmap(bin_data, f_size);
+	close(fd);
+	// munmap(segment_addr, program_header->p_memsz);
+    // munmap(bin_data, f_size);
 }
 
 int main(int argc, char **argv)
@@ -97,9 +98,10 @@ int main(int argc, char **argv)
 		printf("Usage: %s <ELF Executable> \n", argv[0]);
 		exit(1);
 	}
+	// printf("Checking");
 	// 1. carry out necessary checks on the input ELF file
 	// 2. passing it to the loader for carrying out the loading/execution
-	load_and_run_elf(argv[1]);
+	load_and_run_elf(argv);
 	// 3. invoke the cleanup routine inside the loader
 	loader_cleanup();
 	return 0;
