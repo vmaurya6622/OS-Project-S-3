@@ -1,4 +1,4 @@
-# OS-Project-S-3
+# OS-Project-001
 The code is contributed By Vishal Kumar Maurya (2022580) and subham Maurya (2022510)
 Running Instructions :- 
 1. just go the Linux terminal
